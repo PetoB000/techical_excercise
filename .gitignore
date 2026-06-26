@@ -1,1 +1,23 @@
+#  PHP / Composer 
+/vendor/
+composer.phar
+
+#  SQLite store 
+data/users.sqlite
+
+#  Node / npm 
+node_modules/
+client/node_modules/
+client/dist/
+
+#  Environment / secrets 
+.env
+.env.local
+.env.*.local
+
+#  Build / cache 
+.cache/
+*.log
+
+#  OS artifacts 
 .DS_Store
