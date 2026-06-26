@@ -17,6 +17,14 @@ const USERS = `
 `;
 
 const { data, loading, error } = useQuery(USERS);
+
+function onUserUpdated(updatedUser) {
+  if (!data.value) return;
+  const index = data.value.users.findIndex((u) => u.id === updatedUser.id);
+  if (index !== -1) {
+    data.value.users[index] = updatedUser;
+  }
+}
 </script>
 
 <template>
@@ -24,6 +32,6 @@ const { data, loading, error } = useQuery(USERS);
     <h2>Staff users</h2>
     <p v-if="loading">Loading…</p>
     <p v-else-if="error" class="error">{{ error.message }}</p>
-    <UserTable v-else :users="data ? data.users : []" />
+    <UserTable v-else :users="data ? data.users : []" @updated="onUserUpdated" />
   </section>
 </template>

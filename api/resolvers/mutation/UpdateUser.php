@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace AcmeLearn\Importer\Api\Resolvers\Mutation;
 
 use AcmeLearn\Importer\Api\Resolvers\mutation_resolver;
+use AcmeLearn\Importer\Api\UserMapper;
+use AcmeLearn\Importer\UserRepository;
 use PDO;
 use RuntimeException;
 
@@ -20,7 +22,18 @@ final class UpdateUser extends mutation_resolver
      */
     public function resolve(PDO $pdo, array $args): array
     {
-        // Task 2: wire this resolver up to update an existing user and return it.
-        throw new RuntimeException('updateUser is not implemented yet.');
+        $repository = new UserRepository($pdo);
+
+        $id = $args['id'];
+        if ($repository->find($id) === null) {
+            throw new RuntimeException("User {$id} not found.");
+        }
+
+        $columns = UserMapper::inputToColumns($args['input']);
+        if ($columns !== []) {
+            $repository->updateById($id, $columns);
+        }
+
+        return UserMapper::toGraphql($repository->find($id));
     }
 }

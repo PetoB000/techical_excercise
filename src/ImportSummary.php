@@ -10,6 +10,7 @@ namespace AcmeLearn\Importer;
 final class ImportSummary
 {
     private int $imported = 0;
+    private int $updated = 0;
 
     /** @var array<int, string[]> Map of CSV line number => validation errors. */
     private array $skipped = [];
@@ -23,6 +24,11 @@ final class ImportSummary
         $this->imported++;
     }
 
+    public function addUpdated(): void
+    {
+        $this->updated++;
+    }
+
     /**
      * @param string[] $errors
      */
@@ -34,6 +40,11 @@ final class ImportSummary
     public function imported(): int
     {
         return $this->imported;
+    }
+
+    public function updated(): int
+    {
+        return $this->updated;
     }
 
     public function skippedCount(): int
@@ -69,7 +80,8 @@ final class ImportSummary
         $lines = [];
         $lines[] = 'Import complete.';
         $lines[] = sprintf('  Rows read: %d', $this->totalRows);
-        $lines[] = sprintf('  Imported:  %d', $this->imported);
+        $lines[] = sprintf('  Created:   %d', $this->imported);
+        $lines[] = sprintf('  Updated:   %d', $this->updated);
         $lines[] = sprintf('  Skipped:   %d', count($this->skipped));
 
         if ($this->skipped !== []) {

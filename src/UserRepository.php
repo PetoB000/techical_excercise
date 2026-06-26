@@ -35,6 +35,49 @@ final class UserRepository
         ]);
     }
 
+    /**
+     * Update an existing user's fields by their HR ID (used during CSV import).
+     *
+     * @param array<string, string|int> $data
+     */
+    public function updateByHrId(string $hrId, array $data): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE users
+             SET first_name = :first_name,
+                 last_name  = :last_name,
+                 email      = :email,
+                 department = :department,
+                 is_active  = :is_active
+             WHERE hr_id = :hr_id'
+        );
+
+        $stmt->execute([
+            ':hr_id'      => $hrId,
+            ':first_name' => $data['first_name'],
+            ':last_name'  => $data['last_name'],
+            ':email'      => $data['email'],
+            ':department' => $data['department'] ?? '',
+            ':is_active'  => (int) $data['is_active'],
+        ]);
+    }
+
+    /**
+     * Update a subset of fields on a user by their store ID (used by the updateUser mutation).
+     *
+     * @param array<string, string|int> $columns Snake_case column => value pairs to update.
+     */
+    public function updateById(int $id, array $columns): void
+    {
+        $setClauses = implode(', ', array_map(
+            static fn (string $col): string => "{$col} = :{$col}",
+            array_keys($columns),
+        ));
+
+        $stmt = $this->pdo->prepare("UPDATE users SET {$setClauses} WHERE id = :id");
+        $stmt->execute(array_merge([':id' => $id], $columns));
+    }
+
     public function existsByHrId(string $hrId): bool
     {
         $stmt = $this->pdo->prepare('SELECT 1 FROM users WHERE hr_id = :hr_id');

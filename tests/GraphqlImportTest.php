@@ -107,18 +107,48 @@ final class GraphqlImportTest extends TestCase
         );
     }
 
-    public function testReimportingAnExistingHrIdSurfacesAnErrorRatherThanSwallowingIt(): void
+    public function testReimportingAnExistingHrIdUpdatesInPlace(): void
     {
-        $csv = "hr_id,first_name,last_name,email,department,active\n"
-            . "E1,Alice,Adams,alice@example.com,Eng,1\n";
-
-        $first = $this->importCsv($csv);
+        $first = $this->importCsv(
+            "hr_id,first_name,last_name,email,department,active\n"
+            . "E1,Alice,Adams,alice@example.com,Eng,1\n"
+        );
         self::assertArrayNotHasKey('errors', $first);
+        self::assertSame(1, $first['data']['importCsv']['created']);
+        self::assertSame(0, $first['data']['importCsv']['updated']);
 
-        // Re-importing the same hr_id collides on the unique constraint. The resolver
-        // must let that surface as a GraphQL error, not silently swallow it. Task 2
-        // changes this behaviour to an in-place update.
-        $second = $this->importCsv($csv);
-        self::assertArrayHasKey('errors', $second);
+        $second = $this->importCsv(
+            "hr_id,first_name,last_name,email,department,active\n"
+            . "E1,Alice,Adams-Updated,alice@example.com,Engineering,1\n"
+        );
+        self::assertArrayNotHasKey('errors', $second);
+        self::assertSame(0, $second['data']['importCsv']['created']);
+        self::assertSame(1, $second['data']['importCsv']['updated']);
+    }
+
+    public function testUpdateUserMutationReturnsUpdatedUser(): void
+    {
+        $this->importCsv(
+            "hr_id,first_name,last_name,email,department,active\n"
+            . "E1,Alice,Adams,alice@example.com,Engineering,1\n"
+        );
+
+        $userId = $this->pdo->query('SELECT id FROM users WHERE hr_id = "E1"')->fetchColumn();
+
+        $result = $this->execute(
+            'mutation($id: Int!, $input: UpdateUserInput!) {
+                updateUser(id: $id, input: $input) {
+                    id firstName lastName department isActive
+                }
+            }',
+            ['id' => (int) $userId, 'input' => ['firstName' => 'Alicia', 'department' => 'Leadership', 'isActive' => false]],
+        );
+
+        self::assertArrayNotHasKey('errors', $result);
+        $user = $result['data']['updateUser'];
+        self::assertSame('Alicia', $user['firstName']);
+        self::assertSame('Adams', $user['lastName'], 'Unchanged fields should be preserved.');
+        self::assertSame('Leadership', $user['department']);
+        self::assertFalse($user['isActive']);
     }
 }

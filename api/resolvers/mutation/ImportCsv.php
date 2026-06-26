@@ -59,7 +59,7 @@ final class ImportCsv extends mutation_resolver
         return [
             'rowsRead'    => $summary->rowsRead(),
             'created'     => $summary->imported(),
-            'updated'     => 0,
+            'updated'     => $summary->updated(),
             'skipped'     => $summary->skippedCount(),
             'skippedRows' => $summary->skippedRows(),
         ];

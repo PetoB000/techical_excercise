@@ -41,8 +41,13 @@ final class ImportRunner
                 continue;
             }
 
-            $this->repository->insert($row);
-            $summary->addImported();
+            if ($this->repository->existsByHrId((string) $row['hr_id'])) {
+                $this->repository->updateByHrId((string) $row['hr_id'], $row);
+                $summary->addUpdated();
+            } else {
+                $this->repository->insert($row);
+                $summary->addImported();
+            }
         }
 
         return $summary;

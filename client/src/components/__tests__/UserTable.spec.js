@@ -1,6 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import UserTable from '../UserTable.vue';
+
+vi.mock('../../composables/useGraphql', () => ({
+  useMutation: () => ({
+    mutate: vi.fn(),
+    loading: ref(false),
+    error: ref(null),
+  }),
+}));
 
 describe('UserTable', () => {
   const users = [
@@ -41,5 +50,34 @@ describe('UserTable', () => {
     const wrapper = mount(UserTable, { props: { users: [] } });
 
     expect(wrapper.text()).toContain('No users imported yet.');
+  });
+
+  it('renders an Edit button for each user', () => {
+    const wrapper = mount(UserTable, { props: { users } });
+
+    const buttons = wrapper.findAll('button').filter((b) => b.text() === 'Edit');
+    expect(buttons).toHaveLength(2);
+  });
+
+  it('switches the row to an inline form when Edit is clicked', async () => {
+    const wrapper = mount(UserTable, { props: { users } });
+
+    await wrapper.findAll('button')[0].trigger('click'); // first Edit button
+
+    expect(wrapper.find('input').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Save');
+    expect(wrapper.text()).toContain('Cancel');
+  });
+
+  it('restores the view row when Cancel is clicked', async () => {
+    const wrapper = mount(UserTable, { props: { users } });
+
+    await wrapper.findAll('button')[0].trigger('click'); // Edit
+    expect(wrapper.find('input').exists()).toBe(true);
+
+    const cancelBtn = wrapper.findAll('button').find((b) => b.text() === 'Cancel');
+    await cancelBtn.trigger('click');
+
+    expect(wrapper.find('input').exists()).toBe(false);
   });
 });
