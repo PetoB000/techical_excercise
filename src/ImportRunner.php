@@ -30,6 +30,7 @@ final class ImportRunner
             $row['email']      = strtolower(trim($row['email'] ?? ''));
             $row['is_active']  = (($row['active'] ?? '1') === '1') ? 1 : 0;
         }
+        unset($row); // break the reference left by the foreach above
 
         foreach ($rows as $index => $row) {
             $line = $index + 2; // +1 for the header, +1 to make it 1-based

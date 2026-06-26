@@ -1,6 +1,7 @@
 #  PHP / Composer 
 /vendor/
 composer.phar
+.phpunit.cache/
 
 #  SQLite store 
 data/users.sqlite
