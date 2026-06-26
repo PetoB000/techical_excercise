@@ -36,6 +36,43 @@ final class UserRepository
     }
 
     /**
+     * Insert or update a user by hr_id in a single statement.
+     * @param array<string, string|int> $data
+     */
+    public function upsert(array $data): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO users (hr_id, first_name, last_name, email, department, is_active)
+             VALUES (:hr_id, :first_name, :last_name, :email, :department, :is_active)
+             ON CONFLICT(hr_id) DO UPDATE SET
+                 first_name = excluded.first_name,
+                 last_name  = excluded.last_name,
+                 email      = excluded.email,
+                 department = excluded.department,
+                 is_active  = excluded.is_active'
+        );
+
+        $stmt->execute([
+            ':hr_id'      => (string) $data['hr_id'],
+            ':first_name' => $data['first_name'],
+            ':last_name'  => $data['last_name'],
+            ':email'      => $data['email'],
+            ':department' => $data['department'] ?? '',
+            ':is_active'  => (int) $data['is_active'],
+        ]);
+    }
+
+    /**
+     * Return all hr_ids currently in the store as a flat array.
+     * @return string[]
+     */
+    public function findAllHrIds(): array
+    {
+        return $this->pdo->query('SELECT hr_id FROM users')
+            ->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /**
      * Update an existing user's fields by their HR ID (used during CSV import).
      *
      * @param array<string, string|int> $data
@@ -89,11 +126,13 @@ final class UserRepository
     /**
      * @return array<int, array<string, string|int>>
      */
-    public function findAll(): array
+    public function findAll(int $limit = 100, int $offset = 0): array
     {
-        $stmt = $this->pdo->query(
-            'SELECT id, hr_id, first_name, last_name, email, department, is_active FROM users ORDER BY id'
+        $stmt = $this->pdo->prepare(
+            'SELECT id, hr_id, first_name, last_name, email, department, is_active
+             FROM users ORDER BY id LIMIT :limit OFFSET :offset'
         );
+        $stmt->execute([':limit' => $limit, ':offset' => $offset]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -115,5 +154,22 @@ final class UserRepository
     public function count(): int
     {
         return (int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    }
+
+    public function beginTransaction(): void
+    {
+        $this->pdo->beginTransaction();
+    }
+
+    public function commit(): void
+    {
+        $this->pdo->commit();
+    }
+
+    public function rollBack(): void
+    {
+        if ($this->pdo->inTransaction()) {
+            $this->pdo->rollBack();
+        }
     }
 }

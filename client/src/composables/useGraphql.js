@@ -33,11 +33,11 @@ export function useQuery(query, variables = {}) {
   const loading = ref(false);
   const error = ref(null);
 
-  async function refetch() {
+  async function refetch(newVariables) {
     loading.value = true;
     error.value = null;
     try {
-      data.value = await request(query, variables);
+      data.value = await request(query, newVariables ?? variables);
     } catch (e) {
       error.value = e;
     } finally {

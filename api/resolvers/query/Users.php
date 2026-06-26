@@ -16,7 +16,7 @@ use PDO;
 final class Users extends query_resolver
 {
     /**
-     * @param array<string, mixed> $args
+     * @param array{limit?: int, offset?: int} $args
      *
      * @return array<int, array<string, string|int|bool>>
      */
@@ -26,7 +26,7 @@ final class Users extends query_resolver
 
         return array_map(
             static fn (array $row): array => UserMapper::toGraphql($row),
-            $repository->findAll(),
+            $repository->findAll($args['limit'] ?? 100, $args['offset'] ?? 0),
         );
     }
 }

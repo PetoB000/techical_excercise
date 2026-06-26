@@ -18,34 +18,66 @@ const IMPORT_CSV = `
   }
 `;
 
-const { mutate, loading, error } = useMutation(IMPORT_CSV);
-const summary = ref(null);
-const filename = ref('');
+const CHUNK_SIZE = 5000;
 
-function readAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1]);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+const { mutate } = useMutation(IMPORT_CSV);
+
+const loading   = ref(false);
+const error     = ref(null);
+const summary   = ref(null);
+const filename  = ref('');
+const progress  = ref('');
+
+function toBase64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
 }
 
 async function onFileChange(event) {
   const file = event.target.files[0];
-  if (!file) {
-    return;
-  }
+  if (!file) return;
 
   filename.value = file.name;
-  summary.value = null;
+  summary.value  = null;
+  error.value    = null;
+  loading.value  = true;
+  progress.value = '';
 
   try {
-    const contentBase64 = await readAsBase64(file);
-    const data = await mutate({ filename: file.name, contentBase64 });
-    summary.value = data.importCsv;
+    const text      = await file.text();
+    const lines     = text.split('\n');
+    const header    = lines[0];
+    const dataLines = lines.slice(1).filter((l) => l.trim() !== '');
+
+    const totalChunks = Math.max(1, Math.ceil(dataLines.length / CHUNK_SIZE));
+    const accumulated = { rowsRead: 0, created: 0, updated: 0, skipped: 0, skippedRows: [] };
+
+    for (let i = 0; i < dataLines.length; i += CHUNK_SIZE) {
+      const chunkIndex = i / CHUNK_SIZE;
+      progress.value = `Importing chunk ${chunkIndex + 1} of ${totalChunks}…`;
+
+      const chunkLines  = dataLines.slice(i, i + CHUNK_SIZE);
+      const csvChunk    = [header, ...chunkLines].join('\n') + '\n';
+      const data        = await mutate({ filename: file.name, contentBase64: toBase64(csvChunk) });
+      const chunkResult = data.importCsv;
+
+      accumulated.rowsRead += chunkResult.rowsRead;
+      accumulated.created  += chunkResult.created;
+      accumulated.updated  += chunkResult.updated;
+      accumulated.skipped  += chunkResult.skipped;
+
+
+      const lineOffset = i; // chunk k starts at data row k * CHUNK_SIZE → offset = i
+      accumulated.skippedRows.push(
+        ...chunkResult.skippedRows.map((r) => ({ ...r, line: r.line + lineOffset })),
+      );
+    }
+
+    summary.value = accumulated;
   } catch (e) {
-    // The error ref is populated by useMutation and shown in the template.
+    error.value = e;
+  } finally {
+    loading.value  = false;
+    progress.value = '';
   }
 }
 </script>
@@ -54,9 +86,9 @@ async function onFileChange(event) {
   <section>
     <h2>Import a staff CSV</h2>
     <p>Select an HR export to import staff into the user store.</p>
-    <input type="file" accept=".csv,text/csv" @change="onFileChange" />
+    <input type="file" accept=".csv,text/csv" @change="onFileChange" :disabled="loading" />
 
-    <p v-if="loading">Importing {{ filename }}…</p>
+    <p v-if="loading">{{ progress || `Importing ${filename}…` }}</p>
     <p v-if="error" class="error">Import failed: {{ error.message }}</p>
 
     <ResultsSummary v-if="summary" :summary="summary" />

@@ -9,14 +9,16 @@ namespace AcmeLearn\Importer;
  */
 final class ImportSummary
 {
+    private int $rowsRead = 0;
     private int $imported = 0;
     private int $updated = 0;
 
     /** @var array<int, string[]> Map of CSV line number => validation errors. */
     private array $skipped = [];
 
-    public function __construct(private readonly int $totalRows)
+    public function incrementRowsRead(): void
     {
+        $this->rowsRead++;
     }
 
     public function addImported(): void
@@ -54,7 +56,7 @@ final class ImportSummary
 
     public function rowsRead(): int
     {
-        return $this->totalRows;
+        return $this->rowsRead;
     }
 
     /**

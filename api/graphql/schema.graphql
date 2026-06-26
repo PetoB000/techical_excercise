@@ -30,7 +30,8 @@ input UpdateUserInput {
 }
 
 type Query {
-  users: [User!]!
+  users(limit: Int = 100, offset: Int = 0): [User!]!
+  usersCount: Int!
   user(id: Int!): User
 }
 
